@@ -1,1 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus - AI Hand Tracker</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
 
+    <style>
+        :root {
+            --primary: #00f0ff;
+            --bg: #0a0a12;
+            --panel: rgba(20, 20, 35, 0.8);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg);
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            color: #fff;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+
+        /* Header UI */
+        header {
+            position: absolute;
+            top: 20px;
+            z-index: 10;
+            text-align: center;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: var(--primary);
+            text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+        }
+
+        .controls {
+            margin-top: 8px;
+            font-size: 0.9rem;
+            background: var(--panel);
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1px solid rgba(250,250,250,0.1);
+            backdrop-filter: blur(5px);
+        }
+
+        .controls span {
+            margin: 0 10px;
+        }
+
+        /* Video & Canvas Container */
+        #container {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            border: 2px solid rgba(0, 240, 255, 0.2);
+        }
+
+        /* Hide the raw video, we draw it onto the canvas */
+        #webcam {
+            display: none;
+        }
+
+        #output_canvas {
+            width: 100%;
+            height: 100%;
+            transform: scaleX(-1); /* Mirror view for natural interaction */
+        }
+
+        /* Games Overlay */
+        #games-overlay {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 10, 18, 0.95);
+            z-index: 100;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        #games-overlay h2 {
+            font-size: 3rem;
+            color: #ff0055;
+            text-shadow: 0 0 15px rgba(255, 0, 85, 0.6);
+            margin-bottom: 10px;
+        }
+
+        #games-overlay p {
+            font-size: 1.2rem;
+            color: #aaa;
+        }
+
+        .close-btn {
+            margin-top: 20px;
+            padding: 10px 24px;
+            background: transparent;
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: 0.2s;
+        }
+
+        .close-btn:hover {
+            background: var(--primary);
+            color: #000;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Status Indicator */
+        #loading {
+            position: absolute;
+            font-size: 1.2rem;
+            color: var(--primary);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Nexus</h1>
+        <div class="controls">
+            <span style="color: #55ff55;">☝️ Index: Draw</span> | 
+            <span style="color: #ff5555;">🤙 Pinky: Erase</span> | 
+            <span style="color: var(--primary)">✌️ Peace: Games Menu</span>
+        </div>
+    </header>
+
+    <div id="loading">Loading AI Models... Please wait...</div>
+
+    <div id="container">
+        <video id="webcam" autoplay playsinline></video>
+        <canvas id="output_canvas" width="800" height="600"></canvas>
+        
+        <div id="games-overlay">
+            <h2>GAMES SECTION</h2>
+            <p>Coming Soon...</p>
+            <button class="close-btn" onclick="closeGames()">Go Back</button>
+        </div>
+    </div>
+
+    <script>
+        const videoElement = document.getElementById('webcam');
+        const canvasElement = document.getElementById('output_canvas');
+        const canvasCtx = canvasElement.getContext('2d');
+        const gamesOverlay = document.getElementById('games-overlay');
+        const loadingDiv = document.getElementById('loading');
+
+        // Create an offscreen canvas specifically to save our drawing lines permanently
+        const drawingCanvas = document.createElement('canvas');
+        drawingCanvas.width = 800;
+        drawingCanvas.height = 600;
+        const drawCtx = drawingCanvas.getContext('2d');
+        
+        // Setup drawing styles
+        drawCtx.strokeStyle = '#00f0ff';
+        drawCtx.lineWidth = 10;
+        drawCtx.lineCap = 'round';
+        drawCtx.lineJoin = 'round';
+
+        let lastX = null;
+        let lastY = null;
+        let isGamesOpen = false;
+
+        function closeGames() {
+            gamesOverlay.style.display = 'none';
+            isGamesOpen = false;
+        }
+
+        // Helper function to calculate distance between two points
+        function getDistance(pt1, pt2) {
+            return Math.hypot(pt1.x - pt2.x, pt1.y - pt2.y);
+        }
+
+        function onResults(results) {
+            // Hide loading indicator on first frame received
+            loadingDiv.style.display = 'none';
+
+            // Clear main display canvas
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+            
+            // 1. Draw the webcam image onto the display canvas
+            canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+
+            let indexActive = false;
+            let pinkyActive = false;
+            let isPeaceSign = false;
+
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                const landmarks = results.multiHandLandmarks[0];
+
+                // MediaPipe landmark indices:
+                // 0: Wrist, 4: Thumb tip, 8: Index tip, 12: Middle tip, 16: Ring tip, 20: Pinky tip
+                // 5, 9, 13, 17 are the base joints (MCP) of the fingers
+                
+                const indexTip = landmarks[8];
+                const indexBase = landmarks[5];
+                const middleTip = landmarks[12];
+                const middleBase = landmarks[9];
+                const ringTip = landmarks[16];
+                const ringBase = landmarks[13];
+                const pinkyTip = landmarks[20];
+                const pinkyBase = landmarks[17];
+
+                // Check which fingers are extended (Tip is higher/y-coordinate is lower than base joint)
+                const indexExtended = indexTip.y < indexBase.y;
+                const middleExtended = middleTip.y < middleBase.y;
+                const ringExtended = ringTip.y < ringBase.y;
+                const pinkyExtended = pinkyTip.y < pinkyBase.y;
+
+                // ✌️ PEACE SIGN detection: Index and Middle are UP, Ring and Pinky are DOWN
+                if (indexExtended && middleExtended && !ringExtended && !pinkyExtended) {
+                    isPeaceSign = true;
+                } 
+                // ☝️ DRAWING detection: Only Index finger is UP
+                else if (indexExtended && !middleExtended && !ringExtended && !pinkyExtended) {
+                    indexActive = true;
+                } 
+                // 🤙 ERASING detection: Only Pinky finger is UP
+                else if (pinkyExtended && !indexExtended && !middleExtended && !ringExtended) {
+                    pinkyActive = true;
+                }
+
+                // Map normalized AI coordinates (0 to 1) to our canvas size (800x600)
+                // Note: No need to invert X mathematically here because canvas is already mirrored via CSS!
+                const currentX = indexTip.x * canvasElement.width;
+                const currentY = indexTip.y * canvasElement.height;
+
+                const pinkyX = pinkyTip.x * canvasElement.width;
+                const pinkyY = pinkyTip.y * canvasElement.height;
+
+                // EXECUTE ACTIONS Based on Gesture
+                if (isPeaceSign && !isGamesOpen) {
+                    gamesOverlay.style.display = 'flex';
+                    isGamesOpen = true;
+                }
+
+                if (indexActive && !isGamesOpen) {
+                    if (lastX !== null && lastY !== null) {
+                        // Draw a line on the persistent canvas
+                        drawCtx.globalCompositeOperation = 'source-over'; // Normal drawing mode
+                        drawCtx.strokeStyle = '#00f0ff';
+                        drawCtx.lineWidth = 10;
+                        drawCtx.beginPath();
+                        drawCtx.moveTo(lastX, lastY);
+                        drawCtx.lineTo(currentX, currentY);
+                        drawCtx.stroke();
+                    }
+                    lastX = currentX;
+                    lastY = currentY;
+
+                    // Draw a visual pointer UI indicator
+                    canvasCtx.fillStyle = '#00f0ff';
+                    canvasCtx.beginPath();
+                    canvasCtx.arc(currentX, currentY, 8, 0, 2 * Math.PI);
+                    canvasCtx.fill();
+
+                } else if (pinkyActive && !isGamesOpen) {
+                    if (lastX !== null && lastY !== null) {
+                        // Erase on the persistent canvas
+                        drawCtx.globalCompositeOperation = 'destination-out'; // Erasing mode
+                        drawCtx.lineWidth = 40; // Bigger brush for erasing
+                        drawCtx.beginPath();
+                        drawCtx.moveTo(lastX, lastY);
+                        drawCtx.lineTo(pinkyX, pinkyY);
+                        drawCtx.stroke();
+                    }
+                    lastX = pinkyX;
+                    lastY = pinkyY;
+
+                    // Draw a visual eraser UI indicator
+                    canvasCtx.fillStyle = 'rgba(255, 85, 85, 0.5)';
+                    canvasCtx.beginPath();
+                    canvasCtx.arc(pinkyX, pinkyY, 20, 0, 2 * Math.PI);
+                    canvasCtx.fill();
+                } else {
+                    // Reset tracking if fingers are down or posture changes
+                    lastX = null;
+                    lastY = null;
+                }
+
+                // Optional: Draw skeletal hand tracking lines over the video
+                drawHandMarkers(canvasCtx, landmarks);
+            } else {
+                // Reset tracking if no hand is in frame
+                lastX = null;
+                lastY = null;
+            }
+
+            // 2. Layer the persistent drawings canvas directly on top of our video canvas output
+            canvasCtx.save();
+            canvasCtx.drawImage(drawingCanvas, 0, 0);
+            canvasCtx.restore();
+        }
+
+        // Quick helper to draw dot markers on hand tracking joints
+        function drawHandMarkers(ctx, landmarks) {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+            for (let i = 0; i < landmarks.length; i++) {
+                const x = landmarks[i].x * canvasElement.width;
+                const y = landmarks[i].y * canvasElement.height;
+                ctx.beginPath();
+                ctx.arc(x, y, 3, 0, 2 * Math.PI);
+                ctx.fill();
+            }
+        }
+
+        // Initialize MediaPipe Hands
+        const hands = new Hands({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+        });
+
+        hands.setOptions({
+            maxNumHands: 1,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.7,
+            minTrackingConfidence: 0.7
+        });
+
+        hands.onResults(onResults);
+
+        // Start Webcam stream using MediaPipe Camera Utility
+        const camera = new Camera(videoElement, {
+            onFrame: async () => {
+                await hands.send({ image: videoElement });
+            },
+            width: 800,
+            height: 600
+        });
+        
+        camera.start().catch(err => {
+            alert("Camera access denied or error: " + err.message);
+        });
+    </script>
+</body>
+</html>
