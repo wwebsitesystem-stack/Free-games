@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nexus AI Tracking — Dual-Hand Ultra-Fast Spatial Tracking</title>
+    <title>Nexus AI Matrix — Voice + Dual-Hand Tracking System</title>
     
     <style>
         :root {
@@ -11,6 +11,7 @@
             --accent-cyan: #00f0ff;
             --accent-purple: #9d4edd;
             --accent-pink: #ff0055;
+            --accent-green: #00ff66;
             --panel-glass: rgba(10, 10, 22, 0.6);
             --border-glass: rgba(255, 255, 255, 0.08);
             --text-main: #f0f0f5;
@@ -29,7 +30,6 @@
             object-fit: cover;
             transform: scaleX(-1);
             z-index: 1;
-            background-color: var(--bg-dark);
         }
 
         #output_canvas { 
@@ -59,6 +59,11 @@
         .btn-switch-camera:hover { border-color: var(--accent-cyan); background: rgba(0, 240, 255, 0.15); box-shadow: 0 0 15px rgba(0, 240, 255, 0.2); }
         .camera-status-text { font-size: 0.7rem; color: var(--text-muted); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+        .voice-box { display: flex; align-items: center; gap: 12px; background: rgba(0, 240, 255, 0.03); border: 1px solid rgba(0, 240, 255, 0.1); padding: 12px 16px; border-radius: 14px; }
+        .mic-indicator { width: 10px; height: 10px; background: var(--accent-pink); border-radius: 50%; transition: all 0.3s; }
+        .mic-indicator.listening { background: var(--accent-green); box-shadow: 0 0 12px var(--accent-green); animation: pulse 1s infinite; }
+        #voice-transcript { font-size: 0.85rem; color: #ffffff; font-weight: 500; font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 80%; }
+
         .gesture-row { display: flex; align-items: center; background: rgba(255, 255, 255, 0.03); padding: 12px 16px; border-radius: 14px; margin-bottom: 10px; gap: 16px; }
         .gesture-visual { font-size: 1.4rem; background: rgba(255,255,255,0.05); width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; border-radius: 10px; }
         .gesture-info .title { font-size: 0.9rem; font-weight: 600; color: #ffffff; }
@@ -68,7 +73,72 @@
         .color-node { width: 32px; height: 32px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: all 0.25s; }
         .color-node.active { border-color: #ffffff; transform: scale(1.1); }
 
-        #loading { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background-color: var(--bg-dark); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; transition: opacity 0.5s; padding: 40px; text-align: center; }
+        /* ==========================================
+           GHOST LINK GAME MENU WRAPPER UI
+        ========================================== */
+        .game-matrix-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+            width: 75vw;
+            height: 75vh;
+            background: rgba(6, 6, 14, 0.95);
+            border: 2px solid var(--accent-cyan);
+            box-shadow: 0 0 50px rgba(0, 240, 255, 0.3);
+            border-radius: 28px;
+            z-index: 100;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .game-matrix-container.visible {
+            display: flex;
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+        .game-header {
+            width: 100%;
+            height: 60px;
+            background: rgba(255,255,255,0.03);
+            border-bottom: 1px solid var(--border-glass);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+        }
+        .game-title {
+            font-size: 1.1rem;
+            font-weight: 800;
+            letter-spacing: 3px;
+            color: var(--accent-cyan);
+            text-shadow: 0 0 10px rgba(0,240,255,0.4);
+        }
+        .btn-close-game {
+            background: rgba(255,0,85,0.1);
+            border: 1px solid var(--accent-pink);
+            color: #ffffff;
+            padding: 6px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 700;
+            transition: all 0.2s;
+        }
+        .btn-close-game:hover {
+            background: var(--accent-pink);
+            box-shadow: 0 0 15px var(--accent-pink);
+        }
+        #ghost_link_frame {
+            width: 100%;
+            height: calc(100% - 60px);
+            border: none;
+            background: transparent;
+        }
+
+        #loading { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background-color: var(--bg-dark); z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; transition: opacity 0.5s; padding: 40px; text-align: center; }
         .spinner { width: 40px; height: 40px; border: 2px solid rgba(0, 240, 255, 0.1); border-top-color: var(--accent-cyan); border-radius: 50%; animation: spin 1s linear infinite; }
         .loading-text { font-size: 0.9rem; letter-spacing: 3px; color: var(--text-main); text-transform: uppercase; font-weight: 600; max-width: 500px; line-height: 1.6; }
 
@@ -80,13 +150,21 @@
 
     <div id="loading">
         <div class="spinner"></div>
-        <div class="loading-text" id="boot-status">Booting Dual Nexus Core</div>
+        <div class="loading-text" id="boot-status">Booting Nexus Voice-Vision Matrix</div>
+    </div>
+
+    <div class="game-matrix-container" id="game-portal">
+        <div class="game-header">
+            <div class="game-title">✨ GHOST LINK HUB</div>
+            <button class="btn-close-game" id="btn-exit-portal">EXIT ENGINE</button>
+        </div>
+        <iframe id="ghost_link_frame" src=""></iframe>
     </div>
 
     <div class="top-nav">
         <div class="brand">
             <div class="brand-logo"></div>
-            <h1>NEXUS AI MATRIX</h1>
+            <h1>NEXUS AI SYSTEMS</h1>
         </div>
     </div>
 
@@ -95,6 +173,14 @@
             <div class="section-title">
                 <span>System Diagnosis</span>
                 <span id="fps-counter">FPS: --</span>
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <div class="section-title">Voice Core Driver</div>
+            <div class="voice-box">
+                <div class="mic-indicator" id="mic-status"></div>
+                <div id="voice-transcript">Waiting for voice input...</div>
             </div>
         </div>
 
@@ -120,6 +206,13 @@
                 <div class="gesture-info">
                     <div class="title">Fingertip Eraser</div>
                     <div class="desc">Index + Middle together</div>
+                </div>
+            </div>
+            <div class="gesture-row">
+                <div class="gesture-visual" style="color: var(--accent-green);">🤝</div>
+                <div class="gesture-info">
+                    <div class="title">Ghost Link Portal</div>
+                    <div class="desc">Bring hands together / Say "Games"</div>
                 </div>
             </div>
         </div>
@@ -152,6 +245,14 @@
         
         const btnToggleCam = document.getElementById('btn-toggle-cam');
         const cameraLabel = document.getElementById('camera-label');
+        
+        const micStatus = document.getElementById('mic-status');
+        const voiceTranscript = document.getElementById('voice-transcript');
+
+        // Portal Elements
+        const gamePortal = document.getElementById('game-portal');
+        const gameFrame = document.getElementById('ghost_link_frame');
+        const btnExitPortal = document.getElementById('btn-exit-portal');
 
         let handLandmarker = undefined;
         let localStream = null;
@@ -161,23 +262,49 @@
         let lastFrameTime = performance.now();
         let frameCount = 0;
         let currentBrushColor = '#00f0ff';
+        let isPortalOpen = false;
 
-        // Tracking anchors across loops for up to 2 distinct hands
         let trackingHistory = [
-            { prevX: null, prevY: null }, // Hand Index 0
-            { prevX: null, prevY: null }  // Hand Index 1
+            { prevX: null, prevY: null },
+            { prevX: null, prevY: null }
         ];
 
         const drawingCanvas = document.createElement('canvas');
         const drawCtx = drawingCanvas.getContext('2d');
 
+        function launchGamePortal() {
+            if (isPortalOpen) return;
+            isPortalOpen = true;
+            gamePortal.style.display = 'flex';
+            setTimeout(() => gamePortal.classList.add('visible'), 10);
+            gameFrame.src = "ghost_link.html"; // Loads file cleanly relative to your GitHub Pages folder structure
+            voiceTranscript.innerText = "Ghost Link Matrix: Active";
+        }
+
+        function closeGamePortal() {
+            isPortalOpen = false;
+            gamePortal.classList.remove('visible');
+            setTimeout(() => {
+                gamePortal.style.display = 'none';
+                gameFrame.src = ""; // Clears process cache strings immediately
+            }, 300);
+        }
+
+        btnExitPortal.addEventListener('click', closeGamePortal);
+
         colorNodes.forEach(node => {
             node.addEventListener('click', (e) => {
-                colorNodes.forEach(n => n.classList.remove('active'));
-                e.target.classList.add('active');
-                currentBrushColor = e.target.getAttribute('data-color');
+                switchActiveColorPalette(e.target.getAttribute('data-color'));
             });
         });
+
+        function switchActiveColorPalette(hexColor) {
+            colorNodes.forEach(n => {
+                n.classList.remove('active');
+                if(n.getAttribute('data-color') === hexColor) n.classList.add('active');
+            });
+            currentBrushColor = hexColor;
+        }
 
         function synchronizeWindowSize() {
             const w = window.innerWidth;
@@ -211,16 +338,66 @@
                 handLandmarker = await HandLandmarker.createFromOptions(locator, {
                     baseOptions: { modelAssetPath: targetModelPath, delegate: "GPU" },
                     runningMode: "VIDEO",
-                    numHands: 2 // UPGRADED: Core allows parallel multi-hand calculations
+                    numHands: 2
                 });
                 
+                bootStatus.innerText = "Spawning Voice Pipeline...";
+                initializeVoiceRecognition();
+
                 bootStatus.innerText = "Calibrating Optical Inputs...";
                 await discoverCameraHardware();
                 await initializeCaptureStream();
             } catch (error) {
-                console.error("Nexus Core Multi-Fault:", error);
+                console.error("Core Engine Mismatch:", error);
                 bootStatus.innerText = "Engine Configuration Fault.";
             }
+        }
+
+        function initializeVoiceRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) return;
+
+            const recognizer = new SpeechRecognition();
+            recognizer.continuous = true;
+            recognizer.interimResults = false;
+            recognizer.lang = 'en-US';
+
+            recognizer.onstart = () => {
+                micStatus.classList.add('listening');
+            };
+
+            recognizer.onresult = (event) => {
+                const speechCommand = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
+                voiceTranscript.innerText = `Heard: "${speechCommand}"`;
+                
+                if (speechCommand.includes("game") || speechCommand.includes("games")) {
+                    launchGamePortal();
+                } 
+                else if (speechCommand.includes("close") || speechCommand.includes("exit")) {
+                    closeGamePortal();
+                }
+                else if (speechCommand.includes("clear") || speechCommand.includes("wipe")) {
+                    drawCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+                } 
+                else if (speechCommand.includes("cyan") || speechCommand.includes("blue")) {
+                    switchActiveColorPalette("#00f0ff");
+                } 
+                else if (speechCommand.includes("purple")) {
+                    switchActiveColorPalette("#9d4edd");
+                } 
+                else if (speechCommand.includes("pink")) {
+                    switchActiveColorPalette("#ff0055");
+                } 
+                else if (speechCommand.includes("green")) {
+                    switchActiveColorPalette("#00ff66");
+                } 
+                else if (speechCommand.includes("white")) {
+                    switchActiveColorPalette("#ffffff");
+                }
+            };
+
+            recognizer.onend = () => recognizer.start();
+            recognizer.start();
         }
 
         async function discoverCameraHardware() {
@@ -230,16 +407,13 @@
                 const devices = await navigator.mediaDevices.enumerateDevices();
                 videoDevicesList = devices.filter(device => device.kind === 'videoinput');
             } catch (e) {
-                console.warn("Could not target system arrays:", e);
+                console.warn("Hardware lock issue:", e);
             }
         }
 
         async function initializeCaptureStream() {
-            if (localStream) {
-                localStream.getTracks().forEach(track => track.stop());
-            }
+            if (localStream) localStream.getTracks().forEach(track => track.stop());
 
-            // High Performance Target Profile Configuration (60 FPS Processing target)
             const constraints = {
                 video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 60 } }
             };
@@ -248,33 +422,24 @@
                 const currentDevice = videoDevicesList[activeDeviceIndex];
                 constraints.video.deviceId = { exact: currentDevice.deviceId };
                 cameraLabel.innerText = currentDevice.label || `Camera ${activeDeviceIndex + 1}`;
-            } else {
-                cameraLabel.innerText = "Default Video Pipeline";
             }
 
             try {
                 localStream = await navigator.mediaDevices.getUserMedia(constraints);
                 webcamElement.srcObject = localStream;
-                
                 webcamElement.onloadeddata = () => {
                     loadingScreen.style.opacity = '0';
                     setTimeout(() => loadingScreen.style.display = 'none', 500);
                     window.requestAnimationFrame(executeRealtimeProcessingLoop);
                 };
             } catch (err) {
-                console.error("Camera connection dropped:", err);
-                cameraLabel.innerText = "Device allocation mismatch";
+                cameraLabel.innerText = "Hardware connection failed";
             }
         }
 
         btnToggleCam.addEventListener('click', async () => {
-            if (videoDevicesList.length <= 1) {
-                await discoverCameraHardware();
-                if (videoDevicesList.length <= 1) {
-                    alert("No secondary hardware devices registered.");
-                    return;
-                }
-            }
+            if (videoDevicesList.length <= 1) await discoverCameraHardware();
+            if (videoDevicesList.length <= 1) return;
             activeDeviceIndex = (activeDeviceIndex + 1) % videoDevicesList.length;
             await initializeCaptureStream();
         });
@@ -285,8 +450,7 @@
             const timestamp = performance.now();
             frameCount++;
             if (timestamp >= lastFrameTime + 1000) {
-                const currentFps = Math.round((frameCount * 1000) / (timestamp - lastFrameTime));
-                fpsCounter.innerText = `FPS: ${currentFps}`;
+                fpsCounter.innerText = `FPS: ${Math.round((frameCount * 1000) / (timestamp - lastFrameTime))}`;
                 frameCount = 0;
                 lastFrameTime = timestamp;
             }
@@ -295,13 +459,26 @@
 
             if (webcamElement.currentTime !== lastVideoTime) {
                 lastVideoTime = webcamElement.currentTime;
-                
                 const trackingResults = handLandmarker.detectForVideo(webcamElement, timestamp);
 
-                // Check tracking instances for both hands dynamically
                 if (trackingResults.landmarks && trackingResults.landmarks.length > 0) {
                     
-                    // Loop through however many hands are currently inside the screen (up to 2)
+                    // PROXIMITY TELEMETRY DETECTOR: When 2 hands appear, track space between wrists
+                    if (trackingResults.landmarks.length === 2) {
+                        const handOneWrist = trackingResults.landmarks[0][0];
+                        const handTwoWrist = trackingResults.landmarks[1][0];
+
+                        // Pythagorean distance metrics
+                        const distanceX = handOneWrist.x - handTwoWrist.x;
+                        const distanceY = handOneWrist.y - handTwoWrist.y;
+                        const physicalProximity = Math.sqrt(distanceX * distanceX + distanceY * distanceY);
+
+                        // If hands are brought together close enough, fire menu portal
+                        if (physicalProximity < 0.12) {
+                            launchGamePortal();
+                        }
+                    }
+
                     for (let h = 0; h < trackingResults.landmarks.length; h++) {
                         const nodeArray = trackingResults.landmarks[h];
                         const history = trackingHistory[h];
@@ -320,18 +497,15 @@
                         const ringExtended = ringTip.y < ringBase.y;
                         const pinkyExtended = pinkyTip.y < pinkyBase.y;
 
-                        // Calculate spatial mirror metrics for the coordinates
                         const targetX = canvasElement.width - (indexTip.x * canvasElement.width);
                         const targetY = indexTip.y * canvasElement.height;
-
                         const midPointX = canvasElement.width - (((indexTip.x + middleTip.x) / 2) * canvasElement.width);
                         const midPointY = ((indexTip.y + middleTip.y) / 2) * canvasElement.height;
 
-                        // FAST PRECISION ERASER OPERATION: Index & Middle fingers extended together
                         if (indexExtended && middleExtended && !ringExtended && !pinkyExtended) {
                             if (history.prevX !== null && history.prevY !== null) {
                                 drawCtx.globalCompositeOperation = 'destination-out';
-                                drawCtx.lineWidth = 55; // Snappy precision eraser footprint
+                                drawCtx.lineWidth = 60; 
                                 drawCtx.beginPath();
                                 drawCtx.moveTo(history.prevX, history.prevY);
                                 drawCtx.lineTo(midPointX, midPointY);
@@ -340,7 +514,6 @@
                             history.prevX = midPointX;
                             history.prevY = midPointY;
 
-                            // Fast particle indicator ring
                             canvasCtx.strokeStyle = 'rgba(255, 0, 85, 0.9)';
                             canvasCtx.lineWidth = 2;
                             canvasCtx.fillStyle = 'rgba(255, 0, 85, 0.1)';
@@ -349,9 +522,9 @@
                             canvasCtx.fill();
                             canvasCtx.stroke();
                         } 
-                        // DUAL VECTOR DRAW OPERATION: Index finger isolated up high
                         else if (indexExtended && !middleExtended && !ringExtended && !pinkyExtended) {
-                            if (history.prevX !== null && history.prevY !== null) {
+                            // If the game menu is open, we stop tracking drawing lines so you don't draw in the background
+                            if (!isPortalOpen && history.prevX !== null && history.prevY !== null) {
                                 drawCtx.globalCompositeOperation = 'source-over';
                                 drawCtx.strokeStyle = currentBrushColor;
                                 drawCtx.lineWidth = 6;
@@ -379,13 +552,11 @@
                         renderMinimalistSkeletalTrackNodes(canvasCtx, nodeArray);
                     }
 
-                    // Reset unused tracking slots when only one hand is on screen
                     if (trackingResults.landmarks.length < 2) {
                         trackingHistory[1].prevX = null;
                         trackingHistory[1].prevY = null;
                     }
                 } else {
-                    // Total wipeout reset if no hands appear
                     trackingHistory[0].prevX = null;
                     trackingHistory[0].prevY = null;
                     trackingHistory[1].prevX = null;
