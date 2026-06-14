@@ -3,297 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nexus AI — Next-Gen Spatial Hand Tracking</title>
+    <title>Nexus AI Tracking — Ultra-Fast Spatial Hand Tracking</title>
     
-    <style>
-        /* --- PREMIUM COMMERCIAL THEME --- */
-        :root {
-            --bg-dark: #06060c;
-            --accent-cyan: #00f0ff;
-            --accent-purple: #9d4edd;
-            --accent-pink: #ff0055;
-            --panel-glass: rgba(10, 10, 22, 0.6);
-            --border-glass: rgba(255, 255, 255, 0.08);
-            --text-main: #f0f0f5;
-            --text-muted: #8a8a9e;
-        }
-
-        * {
-            box-sizing: border-box;
-            user-select: none;
-        }
-
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: var(--bg-dark);
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
-            color: var(--text-main);
-            overflow: hidden;
-            width: 100vw;
-            height: 100vh;
-        }
-
-        /* --- MASTER FULLSCREEN CANVAS VIEW --- */
-        #output_canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: 1;
-            display: block;
-        }
-
-        /* --- TOP NAV BAR (SAAS MARKET LOOK) --- */
-        .top-nav {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 80px;
-            z-index: 10;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 40px;
-            background: linear-gradient(to bottom, rgba(6,6,12,0.8), rgba(6,6,12,0));
-            pointer-events: none;
-        }
-
-        .brand {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            pointer-events: auto;
-        }
-
-        .brand-logo {
-            width: 12px;
-            height: 12px;
-            background: var(--accent-cyan);
-            border-radius: 50%;
-            box-shadow: 0 0 15px var(--accent-cyan);
-            animation: pulse 2s infinite;
-        }
-
-        .brand h1 {
-            margin: 0;
-            font-size: 1.5rem;
-            font-weight: 900;
-            letter-spacing: 6px;
-            background: linear-gradient(135deg, #ffffff 0%, #a5a5b5 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .nav-actions {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            pointer-events: auto;
-        }
-
-        .btn-buy {
-            background: linear-gradient(135deg, rgba(0,240,255,0.15) 0%, rgba(157,78,221,0.15) 100%);
-            border: 1px solid rgba(0, 240, 255, 0.4);
-            color: #ffffff;
-            padding: 10px 24px;
-            border-radius: 30px;
-            font-weight: 600;
-            font-size: 0.85rem;
-            letter-spacing: 1px;
-            cursor: pointer;
-            text-transform: uppercase;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 20px rgba(0, 240, 255, 0.1);
-            backdrop-filter: blur(5px);
-        }
-
-        .btn-buy:hover {
-            border-color: #ffffff;
-            box-shadow: 0 0 25px rgba(0, 240, 255, 0.4);
-            transform: translateY(-1px);
-        }
-
-        /* --- PREMIUM HUD SIDE PANEL --- */
-        .hud-panel {
-            position: absolute;
-            top: 100px;
-            left: 40px;
-            z-index: 10;
-            background: var(--panel-glass);
-            border: 1px solid var(--border-glass);
-            backdrop-filter: blur(24px);
-            -webkit-backdrop-filter: blur(24px);
-            padding: 30px;
-            border-radius: 24px;
-            width: 340px;
-            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4), 
-                        inset 0 1px 0 rgba(255, 255, 255, 0.1);
-            animation: panelFadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        .panel-section {
-            margin-bottom: 28px;
-        }
-
-        .panel-section:last-child {
-            margin-bottom: 0;
-        }
-
-        .section-title {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            color: var(--text-muted);
-            font-weight: 700;
-            margin-bottom: 14px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        /* Engine Performance Badge */
-        #fps-counter {
-            background: rgba(0, 240, 255, 0.08);
-            border: 1px solid rgba(0, 240, 255, 0.2);
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-family: monospace;
-            font-size: 0.8rem;
-            color: var(--accent-cyan);
-            font-weight: 700;
-            text-shadow: 0 0 8px rgba(0,240,255,0.4);
-        }
-
-        /* Interactive Gestures Guide Grid */
-        .gesture-row {
-            display: flex;
-            align-items: center;
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.03);
-            padding: 12px 16px;
-            border-radius: 14px;
-            margin-bottom: 10px;
-            gap: 16px;
-        }
-
-        .gesture-visual {
-            font-size: 1.4rem;
-            background: rgba(255,255,255,0.05);
-            width: 42px;
-            height: 42px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 10px;
-            border: 1px solid rgba(255,255,255,0.05);
-        }
-
-        .gesture-info .title {
-            font-size: 0.9rem;
-            font-weight: 600;
-            color: #ffffff;
-            margin-bottom: 2px;
-        }
-
-        .gesture-info .desc {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-        }
-
-        /* Luxury Color Palette Dot Matrix */
-        .palette-grid {
-            display: flex;
-            gap: 14px;
-            background: rgba(0, 0, 0, 0.2);
-            padding: 12px;
-            border-radius: 16px;
-            border: 1px solid rgba(255, 255, 255, 0.02);
-            justify-content: space-between;
-        }
-
-        .color-node {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            cursor: pointer;
-            border: 2px solid transparent;
-            transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
-            position: relative;
-        }
-
-        .color-node:hover {
-            transform: scale(1.15);
-        }
-
-        .color-node.active {
-            border-color: #ffffff;
-            transform: scale(1.1);
-        }
-
-        /* --- ENGINE BOOT SCREEN --- */
-        #loading {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background-color: var(--bg-dark);
-            z-index: 100;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 20px;
-            transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-            pointer-events: none;
-        }
-
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 2px solid rgba(0, 240, 255, 0.1);
-            border-top-color: var(--accent-cyan);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        .loading-text {
-            font-size: 0.85rem;
-            letter-spacing: 4px;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            font-weight: 600;
-        }
-
-        /* --- ANIMATION FRAMEWORKS --- */
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; box-shadow: 0 0 25px var(--accent-cyan); } }
-        @keyframes panelFadeIn {
-            from { opacity: 0; transform: translateY(20px); filter: blur(10px); }
-            to { opacity: 1; transform: translateY(0); filter: blur(0); }
-        }
-    </style>
+    <!-- Link to our clean, high-performance external stylesheet -->
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
+    <!-- Cinematic Boot Loader -->
     <div id="loading">
         <div class="spinner"></div>
-        <div class="loading-text">Loading Nexus Engine</div>
+        <div class="loading-text">Booting Nexus Engine</div>
     </div>
 
+    <!-- Commercial Brand Header -->
     <div class="top-nav">
         <div class="brand">
             <div class="brand-logo"></div>
-            <h1>NEXUS</h1>
+            <h1>NEXUS AI TRACKING</h1>
         </div>
         <div class="nav-actions">
-            <button class="btn-buy" onclick="alert('Thank you for choosing Nexus Pro!')">Buy Nexus Pro</button>
+            <button class="btn-buy" onclick="alert('Thank you for choosing Nexus AI Tracking Pro!')">Buy License</button>
         </div>
     </div>
 
+    <!-- Premium Control HUD Overlay -->
     <div class="hud-panel">
         <div class="panel-section">
             <div class="section-title">
@@ -334,8 +68,10 @@
         </div>
     </div>
 
+    <!-- Core Display Layer -->
     <canvas id="output_canvas"></canvas>
 
+    <!-- Google MediaPipe Computer Vision Processing Architecture -->
     <script type="module">
         import { HandLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.8";
 
@@ -349,20 +85,16 @@
         let webcamElement = null;
         let lastVideoTime = -1;
         
-        // Advanced Analytics Frame Counters
         let lastFrameTime = performance.now();
         let frameCount = 0;
 
-        // Vector Brush Engine Coordinates
         let currentBrushColor = '#00f0ff';
         let prevTrackingX = null;
         let prevTrackingY = null;
 
-        // Secondary Persistent Graphical Cache Canvas Layer
         const drawingCanvas = document.createElement('canvas');
         const drawCtx = drawingCanvas.getContext('2d');
 
-        // Color Nodes Active Interface Selection Map
         colorNodes.forEach(node => {
             node.addEventListener('click', (e) => {
                 colorNodes.forEach(n => n.classList.remove('active'));
@@ -371,7 +103,6 @@
             });
         });
 
-        // Responsive Engine Viewport Calibration Mapping Loop
         function synchronizeWindowSize() {
             const w = window.innerWidth;
             const h = window.innerHeight;
@@ -393,48 +124,66 @@
         window.addEventListener('resize', synchronizeWindowSize);
         synchronizeWindowSize();
 
-        // Bootstrapping the Neural Processing Models
+        async function fetchModelAndCache(url) {
+            const cacheName = "nexus-ai-model-cache";
+            try {
+                const cache = await caches.open(cacheName);
+                const cachedResponse = await cache.match(url);
+                if (cachedResponse) {
+                    const blob = await cachedResponse.blob();
+                    return URL.createObjectURL(blob);
+                }
+                const response = await fetch(url);
+                await cache.put(url, response.clone());
+                const blob = await response.blob();
+                return URL.createObjectURL(blob);
+            } catch (e) {
+                return url; 
+            }
+        }
+
         async function runNexusEngine() {
             try {
                 const locator = await FilesetResolver.forVisionTasks(
                     "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.8/wasm"
                 );
+                
+                const modelUrl = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker_num%2D1/float16/1/hand_landmarker_num%2D1.task";
+                const optimizedModelPath = await fetchModelAndCache(modelUrl);
+
                 handLandmarker = await HandLandmarker.createFromOptions(locator, {
                     baseOptions: {
-                        modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker_num%2D1/float16/1/hand_landmarker_num%2D1.task`,
-                        delegate: "GPU" // Access hardware graphics engine acceleration paths
+                        modelAssetPath: optimizedModelPath,
+                        delegate: "GPU" 
                     },
                     runningMode: "VIDEO",
                     numHands: 1
                 });
                 
                 loadingScreen.style.opacity = '0';
-                setTimeout(() => loadingScreen.style.display = 'none', 800);
+                setTimeout(() => loadingScreen.style.display = 'none', 500);
                 initializeCaptureStream();
             } catch (error) {
                 console.error("Nexus Engine initialization fault:", error);
             }
         }
 
-        // Setup Modern Camera Device Constraints Matrix
         function initializeCaptureStream() {
             webcamElement = document.createElement('video');
             webcamElement.autoplay = true;
             webcamElement.playsInline = true;
 
             navigator.mediaDevices.getUserMedia({ 
-                video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 60 } } 
+                video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 60 } } 
             }).then((stream) => {
                 webcamElement.srcObject = stream;
                 webcamElement.addEventListener("loadeddata", executeRealtimeProcessingLoop);
             }).catch(err => {
-                alert("Nexus Core requires camera array interface authority permissions: " + err.message);
+                alert("Nexus Core requires camera array access permissions: " + err.message);
             });
         }
 
-        // Main In-Flight Inference Rendering Pipeline Loop
         async function executeRealtimeProcessingLoop() {
-            // Metrics Analytics Processor
             const timestamp = performance.now();
             frameCount++;
             if (timestamp >= lastFrameTime + 1000) {
@@ -449,7 +198,6 @@
             if (webcamElement.currentTime !== lastVideoTime) {
                 lastVideoTime = webcamElement.currentTime;
                 
-                // Canvas Context Mapping Flipping Transform Matrix (Simulates mirror viewport)
                 canvasCtx.save();
                 canvasCtx.translate(canvasElement.width, 0);
                 canvasCtx.scale(-1, 1);
@@ -466,7 +214,6 @@
                 if (trackingResults.landmarks && trackingResults.landmarks.length > 0) {
                     const nodeArray = trackingResults.landmarks[0];
 
-                    // Spatial Nodes Map Indexes
                     const indexTip = nodeArray[8];
                     const indexBase = nodeArray[5];
                     const middleTip = nodeArray[12];
@@ -476,22 +223,17 @@
                     const pinkyTip = nodeArray[20];
                     const pinkyBase = nodeArray[17];
 
-                    // Structural Vector State Testing Logic
                     if (indexTip.y < indexBase.y) indexExtended = true;
                     if (middleTip.y < middleBase.y) middleExtended = true;
                     if (ringTip.y < ringBase.y) ringExtended = true;
                     if (pinkyTip.y < pinkyBase.y) pinkyExtended = true;
 
-                    // Mirror Coordinate Mathematical Conversions
                     const activeIndexPointX = canvasElement.width - (indexTip.x * canvasElement.width);
                     const activeIndexPointY = indexTip.y * canvasElement.height;
 
                     const unifiedEraserPointX = canvasElement.width - (((indexTip.x + middleTip.x) / 2) * canvasElement.width);
                     const unifiedEraserPointY = ((indexTip.y + middleTip.y) / 2) * canvasElement.height;
-
-                    // --- ACTION SELECTION ROUTERS ---
                     
-                    // ERASE CONDITION: Index + Middle up, rest down
                     if (indexExtended && middleExtended && !ringExtended && !pinkyExtended) {
                         if (prevTrackingX !== null && prevTrackingY !== null) {
                             drawCtx.globalCompositeOperation = 'destination-out';
@@ -504,7 +246,6 @@
                         prevTrackingX = unifiedEraserPointX;
                         prevTrackingY = unifiedEraserPointY;
 
-                        // Premium UI Eraser Indicator Rings
                         canvasCtx.strokeStyle = 'rgba(255, 0, 85, 0.6)';
                         canvasCtx.lineWidth = 2;
                         canvasCtx.fillStyle = 'rgba(255, 0, 85, 0.1)';
@@ -513,7 +254,6 @@
                         canvasCtx.fill();
                         canvasCtx.stroke();
                     } 
-                    // DRAW CONDITION: Only Index up, rest down
                     else if (indexExtended && !middleExtended && !ringExtended && !pinkyExtended) {
                         if (prevTrackingX !== null && prevTrackingY !== null) {
                             drawCtx.globalCompositeOperation = 'source-over';
@@ -527,22 +267,19 @@
                         prevTrackingX = activeIndexPointX;
                         prevTrackingY = activeIndexPointY;
 
-                        // Glowing Luxury UI Pointer Cursor
                         canvasCtx.fillStyle = '#ffffff';
                         canvasCtx.shadowBlur = 20;
                         canvasCtx.shadowColor = currentBrushColor;
                         canvasCtx.beginPath();
                         canvasCtx.arc(activeIndexPointX, activeIndexPointY, 5, 0, 2 * Math.PI);
                         canvasCtx.fill();
-                        canvasCtx.shadowBlur = 0; // Clear glowing cache states
+                        canvasCtx.shadowBlur = 0; 
                     } 
                     else {
-                        // Clear positioning track nodes when hand restates posture
                         prevTrackingX = null;
                         prevTrackingY = null;
                     }
                     
-                    // Subtle Hand Skeletal Matrix Tracking Elements
                     renderMinimalistSkeletalTrackNodes(canvasCtx, nodeArray);
                 } else {
                     prevTrackingX = null;
@@ -550,10 +287,7 @@
                 }
             }
 
-            // Layer the permanent drawing surface over the video canvas
             canvasCtx.drawImage(drawingCanvas, 0, 0);
-
-            // Re-render sequencing cycle
             window.requestAnimationFrame(executeRealtimeProcessingLoop);
         }
 
@@ -568,7 +302,6 @@
             }
         }
 
-        // Initialize Matrix
         runNexusEngine();
     </script>
 </body>
