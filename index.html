@@ -27,9 +27,48 @@
         .brand h1 { margin: 0; font-size: 1.4rem; font-weight: 900; letter-spacing: 4px; color: #ffffff; }
 
         .hud-panel { position: absolute; top: 100px; left: 40px; z-index: 10; background: var(--panel-glass); border: 1px solid var(--border-glass); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); padding: 30px; border-radius: 24px; width: 340px; box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4); }
-        .panel-section { margin-bottom: 28px; }
+        .panel-section { margin-bottom: 24px; }
+        .panel-section:last-child { margin-bottom: 0; }
         .section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 2px; color: var(--text-muted); font-weight: 700; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; }
         #fps-counter { background: rgba(0, 240, 255, 0.08); border: 1px solid rgba(0, 240, 255, 0.2); padding: 4px 10px; border-radius: 6px; color: var(--accent-cyan); font-weight: 700; }
+
+        /* Camera Selection Controls */
+        .camera-control-box {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 12px;
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .btn-switch-camera {
+            background: linear-gradient(135deg, rgba(0,240,255,0.1) 0%, rgba(157,78,221,0.1) 100%);
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            color: #ffffff;
+            padding: 10px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.2s;
+            width: 100%;
+        }
+        .btn-switch-camera:hover {
+            border-color: var(--accent-cyan);
+            background: rgba(0, 240, 255, 0.15);
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
+        }
+        .camera-status-text {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-align: center;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
 
         .gesture-row { display: flex; align-items: center; background: rgba(255, 255, 255, 0.03); padding: 12px 16px; border-radius: 14px; margin-bottom: 10px; gap: 16px; }
         .gesture-visual { font-size: 1.4rem; background: rgba(255,255,255,0.05); width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; border-radius: 10px; }
@@ -43,7 +82,7 @@
         #loading { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background-color: var(--bg-dark); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; transition: opacity 0.5s; padding: 40px; text-align: center; }
         .spinner { width: 40px; height: 40px; border: 2px solid rgba(0, 240, 255, 0.1); border-top-color: var(--accent-cyan); border-radius: 50%; animation: spin 1s linear infinite; }
         .loading-text { font-size: 0.9rem; letter-spacing: 3px; color: var(--text-main); text-transform: uppercase; font-weight: 600; max-width: 500px; line-height: 1.6; }
-        .error-hint { color: var(--accent-pink); font-size: 0.8rem; margin-top: 10px; text-transform: none; letter-spacing: normal; display: none; background: rgba(255,0,85,0.05); padding: 15px; border-radius: 10px; border: 1px solid rgba(255,0,85,0.2); }
+        .error-hint { color: var(--accent-pink); font-size: 0.8rem; margin-top: 10px; display: none; background: rgba(255,0,85,0.05); padding: 15px; border-radius: 10px; border: 1px solid rgba(255,0,85,0.2); }
 
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
@@ -55,7 +94,7 @@
         <div class="spinner" id="loader-icon"></div>
         <div class="loading-text" id="boot-status">Booting Nexus Engine</div>
         <div class="error-hint" id="error-message">
-            <strong>Security Block Warning:</strong> Your browser has halted the script framework. This happens when opening an AI file directly from your local hard drive. <br><br>Please run this file via an app like <strong>VS Code Live Server</strong>, use a local Python terminal server, or drop the code into an online environment like <strong>CodePen.io</strong> to bypass security limitations.
+            <strong>Security Block:</strong> Make sure you are using a server context (like VS Code Live Server) or testing on CodePen.io so the engine can download files.
         </div>
     </div>
 
@@ -71,6 +110,14 @@
             <div class="section-title">
                 <span>System Diagnosis</span>
                 <span id="fps-counter">FPS: --</span>
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <div class="section-title">Optical Hardware</div>
+            <div class="camera-control-box">
+                <button class="btn-switch-camera" id="btn-toggle-cam">🔄 Switch Camera Source</button>
+                <div class="camera-status-text" id="camera-label">Initializing hardware...</div>
             </div>
         </div>
         
@@ -117,9 +164,16 @@
         const errorMessage = document.getElementById('error-message');
         const loaderIcon = document.getElementById('loader-icon');
         const colorNodes = document.querySelectorAll('.color-node');
+        
+        // Camera Switch Elements
+        const btnToggleCam = document.getElementById('btn-toggle-cam');
+        const cameraLabel = document.getElementById('camera-label');
 
         let handLandmarker = undefined;
         let webcamElement = null;
+        let localStream = null;
+        let videoDevicesList = [];
+        let activeDeviceIndex = 0;
         let lastVideoTime = -1;
         let lastFrameTime = performance.now();
         let frameCount = 0;
@@ -159,12 +213,11 @@
         synchronizeWindowSize();
 
         async function runNexusEngine() {
-            // Trigger diagnostic tip if system hangs for more than 3 seconds
             const diagnosticsCheck = setTimeout(() => {
                 bootStatus.innerText = "Engine Startup Interrupted";
                 loaderIcon.style.display = 'none';
                 errorMessage.style.display = 'block';
-            }, 3000);
+            }, 5000);
 
             try {
                 bootStatus.innerText = "Loading Hand Tracking Modules...";
@@ -185,7 +238,10 @@
                 
                 clearTimeout(diagnosticsCheck);
                 bootStatus.innerText = "Requesting Video Stream...";
-                initializeCaptureStream();
+                
+                // Fetch cameras first, then open stream
+                await discoverCameraHardware();
+                await initializeCaptureStream();
             } catch (error) {
                 clearTimeout(diagnosticsCheck);
                 console.error("Nexus Error:", error);
@@ -195,28 +251,83 @@
             }
         }
 
-        function initializeCaptureStream() {
-            webcamElement = document.createElement('video');
-            webcamElement.autoplay = true;
-            webcamElement.playsInline = true;
+        // FIND ALL CAMERA PERIPHERALS ATTACHED TO DEVICE
+        async function discoverCameraHardware() {
+            try {
+                // Request initial access to list labeled devices accurately
+                const tempStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                tempStream.getTracks().forEach(track => track.stop());
 
-            navigator.mediaDevices.getUserMedia({ 
-                video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 60 } } 
-            }).then((stream) => {
-                webcamElement.srcObject = stream;
-                webcamElement.addEventListener("loadeddata", () => {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                videoDevicesList = devices.filter(device => device.kind === 'videoinput');
+                console.log("Discovered video devices:", videoDevicesList);
+            } catch (e) {
+                console.warn("Could not explicitly catalogue hardware devices:", e);
+            }
+        }
+
+        async function initializeCaptureStream() {
+            // Drop running tracks before spinning up new ones
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+            }
+
+            if (!webcamElement) {
+                webcamElement = document.createElement('video');
+                webcamElement.autoplay = true;
+                webcamElement.playsInline = true;
+            }
+
+            // Set up target constraints based on active selected index
+            const constraints = {
+                video: { width: { ideal: 1280 }, height: { ideal: 720 } }
+            };
+
+            if (videoDevicesList.length > 0) {
+                const currentDevice = videoDevicesList[activeDeviceIndex];
+                constraints.video.deviceId = { exact: currentDevice.deviceId };
+                cameraLabel.innerText = currentDevice.label || `Camera ${activeDeviceIndex + 1}`;
+            } else {
+                cameraLabel.innerText = "Default Input Driver";
+            }
+
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia(constraints);
+                webcamElement.srcObject = localStream;
+                
+                // Wait for video data array to settle down completely
+                webcamElement.onloadeddata = () => {
                     loadingScreen.style.opacity = '0';
                     setTimeout(() => loadingScreen.style.display = 'none', 500);
                     executeRealtimeProcessingLoop();
-                });
-            }).catch(err => {
-                bootStatus.innerText = "Camera Device Error";
-                loaderIcon.style.display = 'none';
-                alert("Nexus Tracking requires camera access. Please check your browser bar settings to unblock the camera option.");
-            });
+                };
+            } catch (err) {
+                console.error("Camera access failed:", err);
+                cameraLabel.innerText = "Error launching selected array";
+                alert("Camera driver fault. Try clicking 'Switch Camera Source' to select an active device.");
+            }
         }
 
+        // TOGGLE SWITCH TRIGGER LOGIC
+        btnToggleCam.addEventListener('click', async () => {
+            if (videoDevicesList.length <= 1) {
+                // If it missed devices early, rediscover them dynamically on click
+                await discoverCameraHardware();
+                if (videoDevicesList.length <= 1) {
+                    alert("Only one active camera array detected on this machine.");
+                    return;
+                }
+            }
+            
+            activeDeviceIndex = (activeDeviceIndex + 1) % videoDevicesList.length;
+            cameraLabel.innerText = "Switching feeds...";
+            await initializeCaptureStream();
+        });
+
         async function executeRealtimeProcessingLoop() {
+            // Guard loop execution from breaking if screen turns off or switches
+            if (!localStream || !localStream.active) return;
+
             const timestamp = performance.now();
             frameCount++;
             if (timestamp >= lastFrameTime + 1000) {
