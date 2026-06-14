@@ -1,4 +1,7 @@
-/* --- PREMIUM COMMERCIAL THEME --- */
+/* ==========================================
+   NEXUS AI TRACKING — CORE DESIGN ARCHITECTURE
+   ========================================== */
+
 :root {
     --bg-dark: #06060c;
     --accent-cyan: #00f0ff;
@@ -26,7 +29,7 @@ body {
     height: 100vh;
 }
 
-/* --- MASTER FULLSCREEN CANVAS VIEW --- */
+/* --- FULLSCREEN RENDER LAYER --- */
 #output_canvas {
     position: absolute;
     top: 0;
@@ -37,7 +40,7 @@ body {
     display: block;
 }
 
-/* --- TOP NAV BAR (SAAS MARKET LOOK) --- */
+/* --- PREMIUM NAVIGATION BAR --- */
 .top-nav {
     position: absolute;
     top: 0;
@@ -108,7 +111,7 @@ body {
     transform: translateY(-1px);
 }
 
-/* --- PREMIUM HUD SIDE PANEL --- */
+/* --- GLASSMORPHISM HUDS --- */
 .hud-panel {
     position: absolute;
     top: 100px;
@@ -146,7 +149,7 @@ body {
     align-items: center;
 }
 
-/* Engine Performance Badge */
+/* PERFORMANCE CHIP */
 #fps-counter {
     background: rgba(0, 240, 255, 0.08);
     border: 1px solid rgba(0, 240, 255, 0.2);
@@ -159,7 +162,7 @@ body {
     text-shadow: 0 0 8px rgba(0,240,255,0.4);
 }
 
-/* Interactive Gestures Guide Grid */
+/* GESTURE LIST GID */
 .gesture-row {
     display: flex;
     align-items: center;
@@ -195,7 +198,7 @@ body {
     color: var(--text-muted);
 }
 
-/* Luxury Color Palette Dot Matrix */
+/* LUXURY COLOR INTERFACE MATRIX */
 .palette-grid {
     display: flex;
     gap: 14px;
@@ -225,7 +228,7 @@ body {
     transform: scale(1.1);
 }
 
-/* --- ENGINE BOOT SCREEN --- */
+/* --- THE NEURAL ENGINE SPEED LOADING LAYER --- */
 #loading {
     position: absolute;
     top: 0;
@@ -261,8 +264,15 @@ body {
 }
 
 /* --- ANIMATION FRAMEWORKS --- */
-@keyframes spin { to { transform: rotate(360deg); } }
-@keyframes pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; box-shadow: 0 0 25px var(--accent-cyan); } }
+@keyframes spin { 
+    to { transform: rotate(360deg); } 
+}
+
+@keyframes pulse { 
+    0%, 100% { opacity: 0.6; } 
+    50% { opacity: 1; box-shadow: 0 0 25px var(--accent-cyan); } 
+}
+
 @keyframes panelFadeIn {
     from { opacity: 0; transform: translateY(20px); filter: blur(10px); }
     to { opacity: 1; transform: translateY(0); filter: blur(0); }
